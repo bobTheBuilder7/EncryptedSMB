@@ -2,6 +2,8 @@ package EncryptedSMB
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net"
 
@@ -62,33 +64,37 @@ func (e *EncryptedSMB) Logoff() {
 	e.session.Logoff()
 }
 
-func (e *EncryptedSMB) Encrypt(path string, src io.Reader) error {
+func (e *EncryptedSMB) WriteEncrypt(path string, src io.Reader) (string, error) {
 	newFile, err := e.share.Create(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	w, err := age.Encrypt(newFile, e.recipient)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = io.Copy(w, src)
+	hash := sha256.New()
+
+	multi := io.MultiWriter(w, hash)
+
+	_, err = io.Copy(multi, src)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = w.Close()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = newFile.Close()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 type EReadClose struct {
@@ -100,7 +106,7 @@ func (e *EReadClose) Close() error {
 	return e.file.Close()
 }
 
-func (e *EncryptedSMB) Decrypt(path string) (io.ReadCloser, error) {
+func (e *EncryptedSMB) ReadDecrypt(path string) (io.ReadCloser, error) {
 	encryptedFile, err := e.share.Open(path)
 	if err != nil {
 		return nil, err
