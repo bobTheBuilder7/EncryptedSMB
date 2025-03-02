@@ -97,6 +97,29 @@ func (e *EncryptedSMB) WriteEncrypt(path string, src io.Reader) (string, error) 
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+func (e *EncryptedSMB) Write(path string, src io.Reader) (string, error) {
+	newFile, err := e.share.Create(path)
+	if err != nil {
+		return "", err
+	}
+
+	hash := sha256.New()
+
+	multi := io.MultiWriter(newFile, hash)
+
+	_, err = io.Copy(multi, src)
+	if err != nil {
+		return "", err
+	}
+
+	err = newFile.Close()
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 type EReadClose struct {
 	io.Reader
 	file *smb2.File
