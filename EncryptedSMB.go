@@ -106,6 +106,10 @@ func (e *EReadClose) Close() error {
 	return e.file.Close()
 }
 
+func (e *EncryptedSMB) Remove(name string) error {
+	return e.share.Remove(name)
+}
+
 func (e *EncryptedSMB) ReadDecrypt(path string) (io.ReadCloser, error) {
 	encryptedFile, err := e.share.Open(path)
 	if err != nil {
