@@ -64,37 +64,33 @@ func (e *EncryptedSMB) Logoff() {
 	e.session.Logoff()
 }
 
-func (e *EncryptedSMB) WriteEncrypt(path string, src io.Reader) (string, error) {
+func (e *EncryptedSMB) WriteEncrypt(path string, src io.Reader) error {
 	newFile, err := e.share.Create(path)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	w, err := age.Encrypt(newFile, e.recipient)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	hash := sha256.New()
-
-	multi := io.MultiWriter(w, hash)
-
-	_, err = io.Copy(multi, src)
+	_, err = io.Copy(w, src)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = w.Close()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = newFile.Close()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return nil
 }
 
 func (e *EncryptedSMB) Write(path string, src io.Reader) (string, error) {
